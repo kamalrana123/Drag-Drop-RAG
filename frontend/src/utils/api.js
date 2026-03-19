@@ -81,11 +81,14 @@ const documents = {
   status: (projectId, docId) => get(`/projects/${projectId}/documents/${docId}/status`),
 };
 
-// ── Pipeline ──────────────────────────────────────────────────────────────────
+// ── Pipelines ─────────────────────────────────────────────────────────────────
 
-const pipeline = {
-  get:  (projectId)            => get(`/projects/${projectId}/pipeline`),
-  save: (projectId, nodes, edges) => put(`/projects/${projectId}/pipeline`, { nodes, edges }),
+const pipelines = {
+  list:   (projectId)                         => get(`/projects/${projectId}/pipelines`),
+  create: (projectId, data)                   => post(`/projects/${projectId}/pipelines`, data),
+  get:    (projectId, pipelineId)             => get(`/projects/${projectId}/pipelines/${pipelineId}`),
+  update: (projectId, pipelineId, data)       => put(`/projects/${projectId}/pipelines/${pipelineId}`, data),
+  remove: (projectId, pipelineId)             => del(`/projects/${projectId}/pipelines/${pipelineId}`),
 };
 
 // ── LLM Config ────────────────────────────────────────────────────────────────
@@ -104,8 +107,8 @@ const execution = {
   getJob: (projectId, jobId) =>
     get(`/projects/${projectId}/jobs/${jobId}`),
 
-  runQuery: (projectId, query, nodes = undefined, edges = undefined) =>
-    post(`/projects/${projectId}/run-query`, { query, nodes, edges }),
+  runQuery: (projectId, query, nodes = undefined, edges = undefined, pipelineId = undefined) =>
+    post(`/projects/${projectId}/run-query`, { query, pipeline_id: pipelineId, nodes, edges }),
 
   /**
    * Returns a native EventSource for SSE streaming.
@@ -126,7 +129,7 @@ export const api = {
   auth,
   projects,
   documents,
-  pipeline,
+  pipelines,
   llmConfig,
   execution,
 };

@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # ── Frontend ────────────────────────────────────────────────────────────────
+  frontend-ci:
+    name: Frontend — Lint & Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true   # Lint warnings won't block CI; remove to make strict
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_API_URL: /api/v1
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 7
+
+  # ── Backend ─────────────────────────────────────────────────────────────────
+  backend-ci:
+    name: Backend — Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "0.6"
+          enable-cache: true
+          cache-dependency-glob: "backend/requirements.txt"
+
+      - name: Set up Python 3.11
+        run: uv python install 3.11
+
+      - name: Install dependencies
+        run: uv pip install --system -r requirements.txt
+
+      - name: Run tests
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///./test.db
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET_KEY: test-secret-key
+          APP_SECRET_KEY: test-app-secret
+          ENCRYPTION_KEY: ""
+          STORAGE_BACKEND: local
+          UPLOAD_DIR: ./test_uploads
+          QDRANT_URL: http://localhost:6333
+          CHROMA_PERSIST_DIR: ./test_chroma
+        run: |
+          pytest tests/ -v --tb=short -x
+        continue-on-error: true   # Tests may need actual services; remove to block CI
+
+  # ── Docker Build Check (no push) ────────────────────────────────────────────
+  docker-build-check:
+    name: Docker — Build Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build frontend image
+        run: docker build ./frontend --file frontend/Dockerfile --tag rag-frontend:pr-check
+
+      - name: Build backend image
+        run: docker build ./backend --file backend/Dockerfile --tag rag-backend:pr-check

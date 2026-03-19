@@ -1,0 +1,89 @@
+# ── Core ──────────────────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.0
+python-dotenv==1.0.0
+pydantic[email]==2.9.0
+pydantic-settings==2.5.2
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+bcrypt>=4.0.1
+cryptography==43.0.1
+
+# ── Database ──────────────────────────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.36
+aiosqlite==0.20.0
+alembic==1.13.3
+# asyncpg==0.30.0          # Uncomment for PostgreSQL
+
+# ── Background Jobs ───────────────────────────────────────────────────────────
+celery==5.4.0
+redis==5.1.1
+
+# ── File Upload ───────────────────────────────────────────────────────────────
+python-multipart==0.0.12
+aiofiles==24.1.0
+
+# ── SSE Streaming ─────────────────────────────────────────────────────────────
+sse-starlette==2.1.3
+
+# ── Rate Limiting ─────────────────────────────────────────────────────────────
+slowapi==0.1.9
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+structlog==24.4.0
+
+# ── LangChain Core ────────────────────────────────────────────────────────────
+langchain==0.3.0
+langchain-core==0.3.0
+langchain-community==0.3.0
+
+# ── LLM Providers ─────────────────────────────────────────────────────────────
+langchain-openai==0.2.0
+openai==1.50.0
+
+langchain-google-genai==2.0.0
+google-generativeai==0.7.2
+
+langchain-anthropic==0.2.0
+anthropic==0.36.0
+
+langchain-ollama==0.2.0
+ollama==0.3.0
+
+# ── Embedding Providers ───────────────────────────────────────────────────────
+langchain-huggingface==0.1.0
+sentence-transformers==3.2.0
+langchain-cohere==0.3.0
+cohere==5.11.0
+
+# ── Vector Databases ──────────────────────────────────────────────────────────
+langchain-chroma==0.1.4
+chromadb==0.5.0
+
+langchain-qdrant==0.1.4
+qdrant-client==1.12.0
+
+# ── Document Processing ───────────────────────────────────────────────────────
+unstructured==0.16.0
+pypdf==4.3.1
+pdfminer.six==20231228
+pytesseract==0.3.13
+Pillow==10.4.0
+markdownify==0.13.1
+
+# ── Retrieval ─────────────────────────────────────────────────────────────────
+flashrank==0.2.9
+rank-bm25==0.2.2
+
+# ── Graph RAG ─────────────────────────────────────────────────────────────────
+networkx==3.4.1
+
+# ── Cloud Storage (optional) ──────────────────────────────────────────────────
+boto3==1.35.0                    # S3
+azure-storage-blob==12.23.0      # Azure Blob
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest==8.3.3
+pytest-asyncio==0.24.0
+httpx==0.27.2

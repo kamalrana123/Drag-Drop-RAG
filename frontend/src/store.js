@@ -2,8 +2,9 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { addEdge, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 import { PORT_COMPATIBILITY, PORT_TYPES } from './constants/portTypes';
-import { autoSave, loadAutosave, saveProjectPipeline } from './utils/persistence';
+import { autoSave, loadAutosave } from './utils/persistence';
 import { serializePipeline, deserializePipeline } from './utils/pipelineSerialization';
+import api from './utils/api';
 
 const MAX_HISTORY = 50;
 
@@ -101,24 +102,27 @@ export const useStore = create(
 
     // ── Project ───────────────────────────────────────────────────────────
     currentProjectId: null,
+    currentProject: null,
     activeProjectTab: 'overview', // 'overview' | 'pipeline' | 'documents' | 'settings'
 
+    // ── Pipelines ─────────────────────────────────────────────────────────
+    pipelines: [],           // list of { id, name, pipeline_type, description, updated_at }
+    currentPipelineId: null,
+
+    setPipelines: (pipelines) => set({ pipelines }),
+
+    setCurrentPipelineId: (id) => set({ currentPipelineId: id }),
+
     openProject: (project) => {
-      let nodes = [];
-      let edges = [];
-      if (project.pipeline) {
-        try {
-          const result = deserializePipeline(project.pipeline);
-          nodes = result.nodes;
-          edges = result.edges;
-        } catch { /* corrupt pipeline — open blank */ }
-      }
       set({
         currentProjectId: project.id,
+        currentProject: project,
         currentView: 'project',
         activeProjectTab: 'overview',
-        nodes,
-        edges,
+        pipelines: [],
+        currentPipelineId: null,
+        nodes: [],
+        edges: [],
         history: [],
         future: [],
         selectedNodeId: null,
@@ -304,14 +308,22 @@ export const useStore = create(
   }))
 );
 
-// Autosave subscription — fires whenever nodes, edges, or active project changes
+// Autosave subscription — debounced API save whenever nodes/edges change
+let _saveTimer = null;
 useStore.subscribe(
-  (state) => ({ nodes: state.nodes, edges: state.edges, currentProjectId: state.currentProjectId }),
-  ({ nodes, edges, currentProjectId }) => {
-    const pipeline = serializePipeline(nodes, edges);
-    autoSave(pipeline);
-    if (currentProjectId) {
-      saveProjectPipeline(currentProjectId, pipeline);
+  (state) => ({
+    nodes: state.nodes,
+    edges: state.edges,
+    currentProjectId: state.currentProjectId,
+    currentPipelineId: state.currentPipelineId,
+  }),
+  ({ nodes, edges, currentProjectId, currentPipelineId }) => {
+    autoSave(serializePipeline(nodes, edges));
+    if (currentProjectId && currentPipelineId) {
+      clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(() => {
+        api.pipelines.update(currentProjectId, currentPipelineId, { nodes, edges }).catch(() => {});
+      }, 1500);
     }
   }
 );
