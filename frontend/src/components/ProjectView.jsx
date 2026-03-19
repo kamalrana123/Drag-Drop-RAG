@@ -6,7 +6,6 @@ import {
 import { useStore } from '../store';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import api from '../utils/api';
-import { serializePipeline } from '../utils/pipelineSerialization';
 import Sidebar from './Sidebar';
 import Flow from './Flow';
 import SettingsPanel from './SettingsPanel';
@@ -128,7 +127,7 @@ function PipelineToolbar() {
 // ── Main ProjectView ──────────────────────────────────────────────────────────
 export default function ProjectView() {
   const {
-    currentProjectId, currentProject, activeProjectTab,
+    currentProject, activeProjectTab,
     setActiveProjectTab, closeProject, chatPanelOpen, nodes,
   } = useStore();
 

@@ -93,7 +93,7 @@ const StatsView = ({ output, duration }) => {
   );
 };
 
-const DataPreviewDrawer = ({ nodeId, nodeType, nodeLabel, outputData, onClose }) => {
+const DataPreviewDrawer = ({ nodeType, nodeLabel, outputData, onClose }) => {
   const [tab, setTab] = useState(0);
   const [drawerExpanded, setDrawerExpanded] = useState(false);
 

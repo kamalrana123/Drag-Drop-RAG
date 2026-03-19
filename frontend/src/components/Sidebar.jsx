@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, HelpCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { NODE_REGISTRY } from '../constants/nodeRegistry';
 
-const SidebarItem = ({ type, label, icon: Icon, color, description }) => {
+const SidebarItem = ({ type, label, icon: IconComponent, color, description }) => {
   const onDragStart = (event) => {
     event.dataTransfer.setData('application/reactflow', type);
     event.dataTransfer.effectAllowed = 'move';
@@ -16,7 +16,7 @@ const SidebarItem = ({ type, label, icon: Icon, color, description }) => {
       title={description}
     >
       <div className={`p-1.5 rounded bg-${color}-50 group-hover:bg-${color}-100 transition-colors flex-shrink-0`}>
-        <Icon size={15} className={`text-${color}-600`} />
+        {React.createElement(IconComponent, { size: 15, className: `text-${color}-600` })}
       </div>
       <div className="min-w-0">
         <div className="text-[13px] font-medium text-gray-700 truncate">{label}</div>

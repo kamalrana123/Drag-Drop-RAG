@@ -1,4 +1,4 @@
-import { useMemo, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Handle, Position, useUpdateNodeInternals } from 'reactflow';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useStore } from '../store';
@@ -17,10 +17,11 @@ const BaseNode = ({ id, data, icon: Icon, color, description }) => {
   const updateNodeInternals = useUpdateNodeInternals();
 
   const specs = NODE_PORT_SPECS[data.type] ?? { inputs: ['any'], outputs: ['any'] };
-  const inputHandles = useMemo(() => buildHandles(specs.inputs, 'target'), [specs.inputs.join()]);
+
+  const inputHandles = buildHandles(specs.inputs, 'target');
 
   // For PromptNode in JSON mode — generate one output handle per schema field
-  const outputHandles = useMemo(() => {
+  const outputHandles = (() => {
     if (data.type === 'PromptNode' && config.outputType === 'json' && config.jsonSchema) {
       try {
         const fields = Object.keys(JSON.parse(config.jsonSchema));
@@ -35,12 +36,14 @@ const BaseNode = ({ id, data, icon: Icon, color, description }) => {
       } catch { /* invalid JSON — fall through to static spec */ }
     }
     return buildHandles(specs.outputs, 'source');
-  }, [data.type, config.outputType, config.jsonSchema, specs.outputs.join()]);
+  })();
+
+  const outputHandleIds = outputHandles.map((h) => h.id).join(',');
 
   // Tell ReactFlow to re-measure handles when dynamic count / IDs change
   useEffect(() => {
     updateNodeInternals(id);
-  }, [id, outputHandles.map((h) => h.id).join(','), inputHandles.length]);
+  }, [id, outputHandleIds, inputHandles.length, updateNodeInternals]);
 
   const statusCfg = STATUS_CONFIG[executionStatus];
   const StatusIcon = statusCfg?.icon;

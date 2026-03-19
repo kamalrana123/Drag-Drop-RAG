@@ -2,7 +2,6 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { addEdge, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 import { PORT_COMPATIBILITY, PORT_TYPES } from './constants/portTypes';
-import { serializePipeline } from './utils/pipelineSerialization';
 import api from './utils/api';
 
 const MAX_HISTORY = 50;
@@ -18,53 +17,6 @@ function extractPortType(handleId) {
   return null;
 }
 
-// Initial state for new pipelines
-const initialNodes = [
-  {
-    id: '1',
-    type: 'FileSource',
-    data: { label: 'Document Source', type: 'FileSource', config: {} },
-    position: { x: 50, y: 200 },
-  },
-  {
-    id: '2',
-    type: 'Chunker',
-    data: { label: 'Text Chunker', type: 'Chunker', config: {} },
-    position: { x: 300, y: 200 },
-  },
-  {
-    id: '3',
-    type: 'VectorStore',
-    data: { label: 'Vector DB (Qdrant)', type: 'VectorStore', config: {} },
-    position: { x: 550, y: 200 },
-  },
-  {
-    id: '4',
-    type: 'VectorRetriever',
-    data: { label: 'Vector Search', type: 'VectorRetriever', config: {} },
-    position: { x: 800, y: 200 },
-  },
-  {
-    id: '5',
-    type: 'Reranker',
-    data: { label: 'Reranker (FlashRank)', type: 'Reranker', config: {} },
-    position: { x: 1050, y: 200 },
-  },
-  {
-    id: '6',
-    type: 'LLMResponse',
-    data: { label: 'LLM Response', type: 'LLMResponse', config: {} },
-    position: { x: 1300, y: 200 },
-  },
-];
-
-const initialEdges = [
-  { id: 'e1-2', source: '1', target: '2', animated: true, style: { strokeWidth: 2, stroke: '#3b82f6' } },
-  { id: 'e2-3', source: '2', target: '3', animated: true, style: { strokeWidth: 2, stroke: '#10b981' } },
-  { id: 'e3-4', source: '3', target: '4', animated: true, style: { strokeWidth: 2, stroke: '#22c55e' } },
-  { id: 'e4-5', source: '4', target: '5', animated: true, style: { strokeWidth: 2, stroke: '#06b6d4' } },
-  { id: 'e5-6', source: '5', target: '6', animated: true, style: { strokeWidth: 2, stroke: '#f97316' } },
-];
 
 export const useStore = create(
   subscribeWithSelector((set, get) => ({

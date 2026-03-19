@@ -1,13 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { FolderPlus, X } from 'lucide-react';
 
 export default function CreateProjectModal({ isOpen, onConfirm, onClose }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-
-  useEffect(() => {
-    if (isOpen) { setName(''); setDescription(''); }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 

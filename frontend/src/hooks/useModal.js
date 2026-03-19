@@ -5,7 +5,7 @@ export function useModal(defaultProps = {}) {
 
   const open = useCallback((props = {}) => {
     setState({ isOpen: true, props: { ...defaultProps, ...props } });
-  }, []);
+  }, [defaultProps]);
 
   const close = useCallback(() => {
     setState((s) => ({ ...s, isOpen: false }));

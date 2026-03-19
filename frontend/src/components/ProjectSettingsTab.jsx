@@ -5,7 +5,7 @@ import api from '../utils/api';
 import { ConfirmModal } from './modals';
 
 export default function ProjectSettingsTab({ project }) {
-  const { closeProject, currentProject, openProject } = useStore();
+  const { closeProject, openProject } = useStore();
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? '');
   const [saved, setSaved] = useState(false);

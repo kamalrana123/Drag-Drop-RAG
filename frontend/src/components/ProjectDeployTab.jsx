@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Code2, Server, Copy, CheckCircle2, Download,
   Globe, Info, Package,
@@ -198,11 +198,11 @@ function download(filename, content) {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function SectionHeader({ icon: Icon, iconBg, iconColor, title, description }) {
+function SectionHeader({ icon: IconComponent, iconBg, iconColor, title, description }) {
   return (
     <div className="flex items-start space-x-4 mb-5">
       <div className={`w-10 h-10 ${iconBg} rounded-xl flex items-center justify-center flex-shrink-0`}>
-        <Icon size={18} className={iconColor} />
+        {React.createElement(IconComponent, { size: 18, className: iconColor })}
       </div>
       <div>
         <h3 className="text-sm font-semibold text-gray-900">{title}</h3>

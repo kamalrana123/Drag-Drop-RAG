@@ -6,9 +6,9 @@
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? '/api/v1').replace(/\/$/, '');
 
-function getToken() {
+async function getToken() {
   // Lazy import to avoid circular dependency with store
-  const { useStore } = require('../store');
+  const { useStore } = await import('../store');
   return useStore.getState().token;
 }
 
@@ -16,7 +16,7 @@ function getToken() {
 
 async function request(method, path, body = undefined, isFormData = false) {
   const headers = {};
-  const token = getToken();
+  const token = await getToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   if (body && !isFormData) {

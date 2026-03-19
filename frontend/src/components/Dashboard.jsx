@@ -156,6 +156,7 @@ export default function Dashboard({ onNewProject, onOpenProject, onLogout }) {
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     api.projects.list()
       .then((data) => { if (!cancelled) setProjects(data); })

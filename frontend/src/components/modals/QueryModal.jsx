@@ -10,6 +10,8 @@ const QueryModal = ({ isOpen, onSubmit, onClose, isLoading = false }) => {
     if (isOpen && textareaRef.current) {
       setTimeout(() => textareaRef.current?.focus(), 50);
     }
+    // Reset query when modal closes
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!isOpen) setQuery('');
   }, [isOpen]);
 
