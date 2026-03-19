@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import { savePipeline } from '../utils/persistence';
+import api from '../utils/api';
 import { serializePipeline } from '../utils/pipelineSerialization';
 import Sidebar from './Sidebar';
 import Flow from './Flow';
@@ -31,7 +31,10 @@ const TABS = [
 
 // ── Pipeline tab toolbar (undo/redo/save/workflows — only shown in pipeline tab) ──
 function PipelineToolbar() {
-  const { undo, redo, history, future, nodes, edges } = useStore();
+  const { 
+    undo, redo, history, future, nodes, edges, 
+    currentProjectId, currentPipelineId, setCurrentPipelineId, setPipelines 
+  } = useStore();
   const [workflowOpen, setWorkflowOpen] = useState(false);
   const [savePopover, setSavePopover] = useState(false);
   const [saveName, setSaveName] = useState('');
@@ -44,12 +47,33 @@ function PipelineToolbar() {
 
   useKeyboardShortcuts(shortcuts);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const name = saveName.trim();
-    if (!name) return;
-    savePipeline(name, serializePipeline(nodes, edges));
-    setSaveName('');
-    setSavePopover(false);
+    if (!name || !currentProjectId) return;
+    
+    try {
+      if (currentPipelineId) {
+        await api.pipelines.update(currentProjectId, currentPipelineId, {
+          name,
+          nodes,
+          edges
+        });
+      } else {
+        const newPipeline = await api.pipelines.create(currentProjectId, {
+          name,
+          pipeline_type: 'custom',
+          nodes,
+          edges
+        });
+        setCurrentPipelineId(newPipeline.id);
+        const updatedList = await api.pipelines.list(currentProjectId);
+        setPipelines(updatedList);
+      }
+      setSaveName('');
+      setSavePopover(false);
+    } catch (err) {
+      console.error('Failed to save pipeline:', err);
+    }
   };
 
   return (

@@ -7,18 +7,22 @@ on:
     branches: [main, develop]
 
 jobs:
-  # ── Frontend ────────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
+  # Frontend CI (React / Vite)
+  # ─────────────────────────────────────────────────────────────
   frontend-ci:
     name: Frontend — Lint & Build
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
@@ -30,7 +34,6 @@ jobs:
 
       - name: Lint
         run: npm run lint
-        continue-on-error: true   # Lint warnings won't block CI; remove to make strict
 
       - name: Build
         run: npm run build
@@ -38,17 +41,20 @@ jobs:
           VITE_API_URL: /api/v1
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
         if: github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-dist
           path: frontend/dist/
           retention-days: 7
 
-  # ── Backend ─────────────────────────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
+  # Backend CI (FastAPI + uv)
+  # ─────────────────────────────────────────────────────────────
   backend-ci:
     name: Backend — Test
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: backend
@@ -64,22 +70,37 @@ jobs:
           --health-timeout 3s
           --health-retries 5
 
-    steps:
-      - uses: actions/checkout@v4
+      # Optional: enable when needed
+      # qdrant:
+      #   image: qdrant/qdrant
+      #   ports:
+      #     - 6333:6333
 
-      - name: Set up uv
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Install uv
+      - name: Setup uv
         uses: astral-sh/setup-uv@v4
         with:
           version: "0.6"
           enable-cache: true
           cache-dependency-glob: "backend/requirements.txt"
 
-      - name: Set up Python 3.11
+      # Install Python (managed by uv)
+      - name: Install Python
         run: uv python install 3.11
 
-      - name: Install dependencies
-        run: uv pip install --system -r requirements.txt
+      # Create virtual environment
+      - name: Create venv
+        run: uv venv
 
+      # Install dependencies
+      - name: Install dependencies
+        run: uv pip install -r requirements.txt
+
+      # Run tests
       - name: Run tests
         env:
           DATABASE_URL: sqlite+aiosqlite:///./test.db
@@ -91,21 +112,22 @@ jobs:
           UPLOAD_DIR: ./test_uploads
           QDRANT_URL: http://localhost:6333
           CHROMA_PERSIST_DIR: ./test_chroma
-        run: |
-          pytest tests/ -v --tb=short -x
-        continue-on-error: true   # Tests may need actual services; remove to block CI
+        run: uv run pytest tests/ -v --tb=short -x
 
-  # ── Docker Build Check (no push) ────────────────────────────────────────────
+  # ─────────────────────────────────────────────────────────────
+  # Docker Build Check (PR only)
+  # ─────────────────────────────────────────────────────────────
   docker-build-check:
     name: Docker — Build Check
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Build frontend image
-        run: docker build ./frontend --file frontend/Dockerfile --tag rag-frontend:pr-check
+        run: docker build ./frontend -f frontend/Dockerfile -t rag-frontend:pr-check
 
       - name: Build backend image
-        run: docker build ./backend --file backend/Dockerfile --tag rag-backend:pr-check
+        run: docker build ./backend -f backend/Dockerfile -t rag-backend:pr-check

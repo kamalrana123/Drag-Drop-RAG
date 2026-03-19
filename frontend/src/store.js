@@ -2,8 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { addEdge, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 import { PORT_COMPATIBILITY, PORT_TYPES } from './constants/portTypes';
-import { autoSave, loadAutosave } from './utils/persistence';
-import { serializePipeline, deserializePipeline } from './utils/pipelineSerialization';
+import { serializePipeline } from './utils/pipelineSerialization';
 import api from './utils/api';
 
 const MAX_HISTORY = 50;
@@ -19,18 +18,7 @@ function extractPortType(handleId) {
   return null;
 }
 
-// Try to restore from autosave on startup
-function getInitialState() {
-  try {
-    const saved = loadAutosave();
-    if (saved?.pipeline) {
-      const { nodes, edges } = deserializePipeline(saved.pipeline);
-      if (nodes.length > 0) return { nodes, edges };
-    }
-  } catch { /* ignore */ }
-  return null;
-}
-
+// Initial state for new pipelines
 const initialNodes = [
   {
     id: '1',
@@ -77,8 +65,6 @@ const initialEdges = [
   { id: 'e4-5', source: '4', target: '5', animated: true, style: { strokeWidth: 2, stroke: '#06b6d4' } },
   { id: 'e5-6', source: '5', target: '6', animated: true, style: { strokeWidth: 2, stroke: '#f97316' } },
 ];
-
-const restored = getInitialState();
 
 export const useStore = create(
   subscribeWithSelector((set, get) => ({
@@ -142,8 +128,8 @@ export const useStore = create(
     }),
 
     // ── Core graph state ──────────────────────────────────────────────────
-    nodes: restored?.nodes ?? initialNodes,
-    edges: restored?.edges ?? initialEdges,
+    nodes: [],
+    edges: [],
 
     // ── Selection (ID only — no stale reference bug) ──────────────────────
     selectedNodeId: null,
@@ -318,7 +304,6 @@ useStore.subscribe(
     currentPipelineId: state.currentPipelineId,
   }),
   ({ nodes, edges, currentProjectId, currentPipelineId }) => {
-    autoSave(serializePipeline(nodes, edges));
     if (currentProjectId && currentPipelineId) {
       clearTimeout(_saveTimer);
       _saveTimer = setTimeout(() => {

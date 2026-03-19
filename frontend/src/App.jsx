@@ -11,7 +11,8 @@ import ProjectView from './components/ProjectView';
 import CreateProjectModal from './components/CreateProjectModal';
 import { useStore } from './store';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
-import { savePipeline, createProject } from './utils/persistence';
+import { savePipeline } from './utils/persistence';
+import api from './utils/api';
 import { serializePipeline } from './utils/pipelineSerialization';
 import {
   RotateCcw, RotateCw, FolderOpen, Save, X, ChevronLeft
@@ -266,10 +267,15 @@ function App() {
         />
         <CreateProjectModal
           isOpen={createModalOpen}
-          onConfirm={({ name, description }) => {
-            const project = createProject(name, description);
-            openProject(project);
-            setCreateModalOpen(false);
+          onConfirm={async ({ name, description }) => {
+            try {
+              const project = await api.projects.create(name, description);
+              openProject(project);
+              setCreateModalOpen(false);
+            } catch (err) {
+              console.error('Failed to create project:', err);
+              // Optionally show a toast or error message here
+            }
           }}
           onClose={() => setCreateModalOpen(false)}
         />

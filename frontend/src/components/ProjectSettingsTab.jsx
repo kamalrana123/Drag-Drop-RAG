@@ -1,26 +1,39 @@
 import { useState } from 'react';
 import { Save, Trash2, AlertTriangle } from 'lucide-react';
 import { useStore } from '../store';
-import { updateProjectMeta, deleteProject } from '../utils/persistence';
+import api from '../utils/api';
 import { ConfirmModal } from './modals';
 
 export default function ProjectSettingsTab({ project }) {
-  const { closeProject } = useStore();
+  const { closeProject, currentProject, openProject } = useStore();
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? '');
   const [saved, setSaved] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!name.trim()) return;
-    updateProjectMeta(project.id, name.trim(), description.trim());
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      const updated = await api.projects.update(project.id, {
+        name: name.trim(),
+        description: description.trim()
+      });
+      // Update global project state
+      openProject(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error('Failed to update project:', err);
+    }
   };
 
-  const handleDelete = () => {
-    deleteProject(project.id);
-    closeProject();
+  const handleDelete = async () => {
+    try {
+      await api.projects.remove(project.id);
+      closeProject();
+    } catch (err) {
+      console.error('Failed to delete project:', err);
+    }
   };
 
   const nodeCount = project.pipeline?.nodes?.length ?? 0;

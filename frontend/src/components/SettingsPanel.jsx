@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { NODE_REGISTRY_MAP } from '../constants/nodeRegistry';
-import { getProject } from '../utils/persistence';
 import { X, Settings, Plus, Minus, Zap, RotateCcw } from 'lucide-react';
 
 // Shared field components
@@ -32,8 +31,8 @@ const PROVIDER_LABELS = {
 
 // LLMModelField — shows project default or per-node override
 function LLMModelField({ config, set }) {
-  const { currentProjectId } = useStore();
-  const projectLLM = currentProjectId ? getProject(currentProjectId)?.llmConfig : null;
+  const { currentProject } = useStore();
+  const projectLLM = currentProject?.llmConfig;
   const useDefault = projectLLM && (config.useProjectLLM !== false);
 
   if (useDefault && projectLLM) {
