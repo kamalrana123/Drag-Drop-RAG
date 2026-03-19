@@ -6,61 +6,62 @@ import ReactFlow, {
   Panel
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { FileText, Database, Filter, MessageSquare, Play, Settings, Scan, Scissors, Tags } from 'lucide-react';
+import { 
+  FileText, Database, Filter, MessageSquare, Play, 
+  Settings, Scan, Scissors, Tags, Globe, Cloud, 
+  Layout, Zap, ListFilter, BrainCircuit, Sparkles, Hash,
+  Terminal, DatabaseZap
+} from 'lucide-react';
 import { useStore } from '../store';
 import BaseNode from './BaseNode';
 import axios from 'axios';
 
-const FileSourceNode = (props) => (
-  <BaseNode {...props} icon={FileText} color="blue">
-    <p className="text-[10px] text-gray-400">PDF, TXT, DOCX</p>
-  </BaseNode>
-);
+// --- Custom Node Components ---
 
-const OCREngineNode = (props) => (
-  <BaseNode {...props} icon={Scan} color="amber">
-    <p className="text-[10px] text-gray-400">Extract text from images/PDFs</p>
-  </BaseNode>
-);
+const FileSourceNode = (props) => <BaseNode {...props} icon={FileText} color="blue" description="Local PDF/TXT/DOCX" />;
+const WebSourceNode = (props) => <BaseNode {...props} icon={Globe} color="blue" description="Crawl URL content" />;
+const S3SourceNode = (props) => <BaseNode {...props} icon={Cloud} color="blue" description="AWS S3 bucket" />;
 
-const ChunkerNode = (props) => (
-  <BaseNode {...props} icon={Scissors} color="emerald">
-    <p className="text-[10px] text-gray-400">Split text into chunks</p>
-  </BaseNode>
-);
+const DocumentExtractionNode = (props) => <BaseNode {...props} icon={Scan} color="amber" description="Unified Extraction" />;
+const OCRProcessorNode = (props) => <BaseNode {...props} icon={Layout} color="amber" description="OCR for images" />;
+const MarkdownConverterNode = (props) => <BaseNode {...props} icon={Hash} color="amber" description="Convert to Markdown" />;
 
-const MetadataExtractorNode = (props) => (
-  <BaseNode {...props} icon={Tags} color="indigo">
-    <p className="text-[10px] text-gray-400">Extract summary, tags, etc.</p>
-  </BaseNode>
-);
+const ChunkerNode = (props) => <BaseNode {...props} icon={Scissors} color="emerald" description="Split text into chunks" />;
+const MetadataExtractorNode = (props) => <BaseNode {...props} icon={Tags} color="emerald" description="Summary, Entities, etc." />;
+const SemanticSplitterNode = (props) => <BaseNode {...props} icon={BrainCircuit} color="emerald" description="Embedding-based split" />;
 
-const VectorStoreNode = (props) => (
-  <BaseNode {...props} icon={Database} color="green">
-    <p className="text-[10px] text-gray-400">Store in Qdrant</p>
-  </BaseNode>
-);
+const VectorStoreNode = (props) => <BaseNode {...props} icon={Database} color="green" description="Qdrant Vector DB" />;
+const ChromaDBStoreNode = (props) => <BaseNode {...props} icon={Database} color="green" description="Local ChromaDB" />;
 
-const RerankerNode = (props) => (
-  <BaseNode {...props} icon={Filter} color="orange">
-    <p className="text-[10px] text-gray-400">FlashRank Reranking</p>
-  </BaseNode>
-);
+const VectorRetrieverNode = (props) => <BaseNode {...props} icon={Zap} color="cyan" description="Dense semantic search" />;
+const HybridRetrieverNode = (props) => <BaseNode {...props} icon={ListFilter} color="cyan" description="Dense + Sparse Search" />;
 
-const LLMResponseNode = (props) => (
-  <BaseNode {...props} icon={MessageSquare} color="purple">
-    <p className="text-[10px] text-gray-400">Generate final answer</p>
-  </BaseNode>
-);
+const RerankerNode = (props) => <BaseNode {...props} icon={Filter} color="orange" description="FlashRank Reranking" />;
+const CohereRerankNode = (props) => <BaseNode {...props} icon={Sparkles} color="orange" description="Cohere API Rerank" />;
+
+const LLMResponseNode = (props) => <BaseNode {...props} icon={MessageSquare} color="purple" description="Generate final answer" />;
+const SummarizerNode = (props) => <BaseNode {...props} icon={Zap} color="purple" description="Condense documents" />;
+const StructuredOutputNode = (props) => <BaseNode {...props} icon={Terminal} color="purple" description="Extract JSON/Schema" />;
 
 const nodeTypes = {
   FileSource: FileSourceNode,
-  OCREngine: OCREngineNode,
+  WebSource: WebSourceNode,
+  S3Source: S3SourceNode,
+  DocumentExtraction: DocumentExtractionNode,
+  OCRProcessor: OCRProcessorNode,
+  MarkdownConverter: MarkdownConverterNode,
   Chunker: ChunkerNode,
   MetadataExtractor: MetadataExtractorNode,
+  SemanticSplitter: SemanticSplitterNode,
   VectorStore: VectorStoreNode,
+  ChromaDBStore: ChromaDBStoreNode,
+  VectorRetriever: VectorRetrieverNode,
+  HybridRetriever: HybridRetrieverNode,
   Reranker: RerankerNode,
+  CohereRerank: CohereRerankNode,
   LLMResponse: LLMResponseNode,
+  Summarizer: SummarizerNode,
+  StructuredOutput: StructuredOutputNode,
 };
 
 const Flow = () => {
@@ -93,15 +94,11 @@ const Flow = () => {
   const onDrop = useCallback(
     (event) => {
       event.preventDefault();
-
       const type = event.dataTransfer.getData('application/reactflow');
-
-      if (typeof type === 'undefined' || !type) {
-        return;
-      }
+      if (typeof type === 'undefined' || !type) return;
 
       const position = {
-        x: event.clientX - 250,
+        x: event.clientX - 350,
         y: event.clientY - 100,
       };
       
@@ -125,23 +122,28 @@ const Flow = () => {
     }
   }, [setNodes, setEdges, setSelectedNode]);
 
-  const onRun = useCallback(async () => {
+  const onRunIngestion = useCallback(async () => {
     try {
-      console.log('Running pipeline...', { nodes, edges });
-      const response = await axios.post('http://localhost:8000/run', {
-        nodes,
-        edges,
-        query: "What is in the document?"
-      });
-      alert('Response from RAG: ' + response.data.answer);
+      const response = await axios.post('http://localhost:8000/run-ingestion', { nodes, edges });
+      alert('Ingestion Complete: ' + JSON.stringify(response.data.result));
     } catch (error) {
-      console.error('Failed to run pipeline:', error);
-      alert('Error: ' + (error.response?.data?.detail || error.message));
+      alert('Ingestion Failed: ' + (error.response?.data?.detail || error.message));
+    }
+  }, [nodes, edges]);
+
+  const onRunQuery = useCallback(async () => {
+    try {
+      const query = prompt("Enter your query:", "What is the summary of these documents?");
+      if (!query) return;
+      const response = await axios.post('http://localhost:8000/run-query', { nodes, edges, query });
+      alert('RAG Answer: ' + response.data.answer);
+    } catch (error) {
+      alert('Query Failed: ' + (error.response?.data?.detail || error.message));
     }
   }, [nodes, edges]);
 
   return (
-    <div className="w-full h-full bg-gray-50">
+    <div className="w-full h-full bg-gray-50 overflow-hidden">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -161,20 +163,29 @@ const Flow = () => {
         <Background />
         <Controls />
         <MiniMap />
-        <Panel position="top-right" className="flex flex-col space-y-2">
-          <button
-            onClick={onRun}
-            className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-lg transition-colors"
-          >
-            <Play size={16} />
-            <span>Run Pipeline</span>
-          </button>
+        <Panel position="top-right" className="flex flex-col space-y-3 mr-4">
+          <div className="bg-white p-2 rounded-xl shadow-lg border border-gray-100 flex flex-col space-y-2">
+            <button
+              onClick={onRunIngestion}
+              className="flex items-center space-x-2 bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2.5 rounded-lg shadow-sm transition-all text-sm font-semibold"
+            >
+              <DatabaseZap size={16} />
+              <span>Run Ingestion</span>
+            </button>
+            <button
+              onClick={onRunQuery}
+              className="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg shadow-sm transition-all text-sm font-semibold"
+            >
+              <MessageSquare size={16} />
+              <span>Run Query</span>
+            </button>
+          </div>
           <button
             onClick={onClear}
-            className="flex items-center space-x-2 bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg shadow-md transition-colors"
+            className="flex items-center space-x-2 bg-white hover:bg-gray-100 text-gray-500 border border-gray-200 px-4 py-2 rounded-lg shadow-sm transition-all text-sm font-medium"
           >
-            <Play size={16} className="text-gray-500 rotate-90" />
-            <span>Clear Canvas</span>
+            <Hash size={14} className="rotate-90" />
+            <span>Reset Canvas</span>
           </button>
         </Panel>
       </ReactFlow>
