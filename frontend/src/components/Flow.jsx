@@ -102,6 +102,7 @@ const FlowInner = () => {
     connectionError, clearConnectionError,
     setChatPanelOpen,
     currentProjectId,
+    currentPipelineId,
   } = useStore();
 
   const { screenToFlowPosition } = useReactFlow();
@@ -178,7 +179,7 @@ const FlowInner = () => {
     }
     setIsRunningIngestion(true);
     try {
-      const { job_id } = await api.execution.runIngestion(currentProjectId, { nodes, edges });
+      const { job_id } = await api.execution.runIngestion(currentProjectId, { pipeline_id: currentPipelineId, nodes, edges });
 
       // Poll job status every 2 s
       const poll = setInterval(async () => {
@@ -202,7 +203,7 @@ const FlowInner = () => {
       setIsRunningIngestion(false);
       resultModal.open({ title: 'Ingestion Failed', content: error.message, variant: 'error' });
     }
-  }, [nodes, edges, resultModal, currentProjectId]);
+  }, [nodes, edges, resultModal, currentProjectId, currentPipelineId]);
 
   // handleQuerySubmit is called from ChatPanel via the store's nodes/edges
   // We expose it on the store so ChatPanel can trigger it without prop drilling
@@ -210,8 +211,8 @@ const FlowInner = () => {
     useStore.setState({ _runQuery: async (query) => {
       setIsRunningQuery(true);
       try {
-        const { nodes: n, edges: e, currentProjectId: pid } = useStore.getState();
-        const result = await api.execution.runQuery(pid, query, n, e);
+        const { nodes: n, edges: e, currentProjectId: pid, currentPipelineId: plid } = useStore.getState();
+        const result = await api.execution.runQuery(pid, query, n, e, plid);
         useStore.getState().addChatMessage({
           id: Date.now(),
           role: 'assistant',

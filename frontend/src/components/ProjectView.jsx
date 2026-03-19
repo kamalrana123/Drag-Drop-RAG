@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '../store';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
-import { savePipeline, getProject } from '../utils/persistence';
+import { savePipeline } from '../utils/persistence';
 import { serializePipeline } from '../utils/pipelineSerialization';
 import Sidebar from './Sidebar';
 import Flow from './Flow';
@@ -13,6 +13,7 @@ import SettingsPanel from './SettingsPanel';
 import ValidationBanner from './ValidationBanner';
 import ChatPanel from './ChatPanel';
 import WorkflowManager from './WorkflowManager';
+import PipelineSelector from './PipelineSelector';
 import ProjectOverviewTab from './ProjectOverviewTab';
 import ProjectDocumentsTab from './ProjectDocumentsTab';
 import ProjectSettingsTab from './ProjectSettingsTab';
@@ -102,13 +103,14 @@ function PipelineToolbar() {
 
 // ── Main ProjectView ──────────────────────────────────────────────────────────
 export default function ProjectView() {
-  const { currentProjectId, activeProjectTab, setActiveProjectTab, closeProject, chatPanelOpen } = useStore();
+  const {
+    currentProjectId, currentProject, activeProjectTab,
+    setActiveProjectTab, closeProject, chatPanelOpen, nodes,
+  } = useStore();
 
-  // Always fetch fresh project data from localStorage so tab switches reflect latest state
-  const project = getProject(currentProjectId);
+  const project = currentProject;
 
   if (!project) {
-    // Project was deleted or ID is stale — go back
     closeProject();
     return null;
   }
@@ -136,7 +138,7 @@ export default function ProjectView() {
           <div>
             <h1 className="text-sm font-semibold text-gray-900 leading-none">{project.name}</h1>
             <p className="text-xs text-gray-400 mt-0.5">
-              {(project.pipeline?.nodes?.length ?? 0)} nodes · {(project.documents?.length ?? 0)} documents
+              {nodes.length} nodes in current pipeline
             </p>
           </div>
         </div>
@@ -177,6 +179,7 @@ export default function ProjectView() {
 
         {/* Pipeline — always mounted, shown/hidden via CSS to preserve ReactFlow state */}
         <div className={`flex flex-1 overflow-hidden ${activeProjectTab === 'pipeline' ? 'flex' : 'hidden'}`}>
+          <PipelineSelector />
           <Sidebar />
           <div className="flex-1 relative h-full">
             <ValidationBanner />
