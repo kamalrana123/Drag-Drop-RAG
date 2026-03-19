@@ -17,11 +17,30 @@ const BaseNode = ({ id, data, icon: Icon, color, description }) => {
   const updateNodeInternals = useUpdateNodeInternals();
 
   const specs = NODE_PORT_SPECS[data.type] ?? { inputs: ['any'], outputs: ['any'] };
-  const inputHandles  = useMemo(() => buildHandles(specs.inputs,  'target'), [specs.inputs.join()]);
-  const outputHandles = useMemo(() => buildHandles(specs.outputs, 'source'), [specs.outputs.join()]);
+  const inputHandles = useMemo(() => buildHandles(specs.inputs, 'target'), [specs.inputs.join()]);
 
-  // Tell ReactFlow to re-measure handles when dynamic count changes
-  useEffect(() => { updateNodeInternals(id); }, [id, inputHandles.length, outputHandles.length]);
+  // For PromptNode in JSON mode — generate one output handle per schema field
+  const outputHandles = useMemo(() => {
+    if (data.type === 'PromptNode' && config.outputType === 'json' && config.jsonSchema) {
+      try {
+        const fields = Object.keys(JSON.parse(config.jsonSchema));
+        if (fields.length > 0) {
+          return fields.map((field) => ({
+            id: `source-any-${field}`,
+            portType: 'any',
+            label: field,
+            color: '#9ca3af',
+          }));
+        }
+      } catch { /* invalid JSON — fall through to static spec */ }
+    }
+    return buildHandles(specs.outputs, 'source');
+  }, [data.type, config.outputType, config.jsonSchema, specs.outputs.join()]);
+
+  // Tell ReactFlow to re-measure handles when dynamic count / IDs change
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, outputHandles.map((h) => h.id).join(','), inputHandles.length]);
 
   const statusCfg = STATUS_CONFIG[executionStatus];
   const StatusIcon = statusCfg?.icon;
@@ -106,6 +125,25 @@ const BaseNode = ({ id, data, icon: Icon, color, description }) => {
           title={`Output: ${h.label}`}
         />
       ))}
+
+      {/* Field-name labels for JSON schema outputs */}
+      {data.type === 'PromptNode' && config.outputType === 'json' && outputHandles.length > 0 && (
+        outputHandles.map((h, i) => (
+          <div
+            key={`lbl-${h.id}`}
+            className="absolute pointer-events-none"
+            style={{
+              top: `${((i + 1) / (outputHandles.length + 1)) * 100}%`,
+              right: '14px',
+              transform: 'translateY(-50%)',
+            }}
+          >
+            <span className="text-[8px] font-mono font-semibold text-gray-400 bg-gray-50 px-1 rounded">
+              {h.label}
+            </span>
+          </div>
+        ))
+      )}
     </div>
   );
 };

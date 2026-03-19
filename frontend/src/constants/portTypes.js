@@ -14,18 +14,19 @@ export const PORT_TYPES = {
 };
 
 // Which source port types are allowed to connect to a given target port type
+// 'any' is included in every set so JSON schema field outputs (port type: any) can wire to any input
 export const PORT_COMPATIBILITY = {
-  raw_documents:  new Set(['raw_documents']),
-  chunks:         new Set(['raw_documents', 'chunks']),
-  embeddings:     new Set(['chunks']),
-  retrieved_docs: new Set(['embeddings', 'query', 'memory', 'retrieved_docs']),
-  ranked_docs:    new Set(['retrieved_docs']),
-  answer:         new Set(['ranked_docs', 'retrieved_docs', 'query', 'answer']),
-  query_list:     new Set(['query']),
-  query:          new Set(['query', 'query_list', 'grade', 'memory']),
-  graph:          new Set(['chunks', 'raw_documents']),
-  grade:          new Set(['retrieved_docs', 'answer']),
-  memory:         new Set(['answer', 'query']),
+  raw_documents:  new Set(['raw_documents', 'any']),
+  chunks:         new Set(['raw_documents', 'chunks', 'any']),
+  embeddings:     new Set(['chunks', 'any']),
+  retrieved_docs: new Set(['embeddings', 'query', 'memory', 'retrieved_docs', 'any']),
+  ranked_docs:    new Set(['retrieved_docs', 'any']),
+  answer:         new Set(['ranked_docs', 'retrieved_docs', 'query', 'answer', 'any']),
+  query_list:     new Set(['query', 'any']),
+  query:          new Set(['query', 'query_list', 'grade', 'memory', 'any']),
+  graph:          new Set(['chunks', 'raw_documents', 'any']),
+  grade:          new Set(['retrieved_docs', 'answer', 'any']),
+  memory:         new Set(['answer', 'query', 'any']),
   any:            new Set(Object.values(PORT_TYPES).map(p => p.id)),
 };
 
@@ -55,6 +56,7 @@ export const NODE_PORT_SPECS = {
   LLMResponse:           { inputs: ['ranked_docs', 'query'],          outputs: ['answer'] },
   Summarizer:            { inputs: ['retrieved_docs'],                 outputs: ['answer'] },
   StructuredOutput:      { inputs: ['ranked_docs', 'query'],          outputs: ['answer'] },
+  PromptNode:            { inputs: ['query', 'retrieved_docs'],        outputs: ['query'] },
   // Query Transformation
   HyDE:                  { inputs: ['query'],                         outputs: ['query_list'] },
   MultiQueryExpander:    { inputs: ['query'],                         outputs: ['query_list'] },
@@ -65,6 +67,7 @@ export const NODE_PORT_SPECS = {
   AnswerGrader:          { inputs: ['answer', 'query'],               outputs: ['grade'] },
   HallucinationChecker:  { inputs: ['answer', 'retrieved_docs'],      outputs: ['grade'] },
   QueryRouter:           { inputs: ['query'],                         outputs: ['query', 'query'] },
+  LLMRouter:             { inputs: ['query'],                         outputs: ['query', 'query', 'query'] },
   // Advanced Retrieval
   ParentDocRetriever:    { inputs: ['embeddings', 'query'],           outputs: ['retrieved_docs'] },
   BM25Retriever:         { inputs: ['query'],                         outputs: ['retrieved_docs'] },

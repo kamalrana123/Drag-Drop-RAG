@@ -3,7 +3,8 @@ import {
   Database, Zap, ListFilter, Filter, Sparkles, MessageSquare, Terminal,
   Lightbulb, GitBranch, ArrowUpLeft, PenLine, ClipboardCheck, CheckCircle2,
   AlertTriangle, GitFork, FolderSearch, AlignLeft, Layers, Minimize2,
-  Share2, Network, Brain, History, Radio, BookMarked, DatabaseZap
+  Share2, Network, Brain, History, Radio, BookMarked, DatabaseZap,
+  Bot, Waypoints
 } from 'lucide-react';
 
 export const NODE_REGISTRY = [
@@ -38,6 +39,7 @@ export const NODE_REGISTRY = [
   { type: 'LLMResponse',           label: 'Chat Response',         icon: MessageSquare,  color: 'purple',  category: 'LLMs & Generation',    categoryOrder: 6, description: 'GPT-4o / Gemini generation',  tags: ['llm','gpt','gemini','generate','chat','answer'] },
   { type: 'Summarizer',            label: 'Summarizer',            icon: Zap,            color: 'purple',  category: 'LLMs & Generation',    categoryOrder: 6, description: 'Condense documents to summary', tags: ['llm','summarize','condense','summary'] },
   { type: 'StructuredOutput',      label: 'Structured Output',     icon: Terminal,       color: 'purple',  category: 'LLMs & Generation',    categoryOrder: 6, description: 'Extract JSON / YAML schema',   tags: ['llm','json','schema','structured','output'] },
+  { type: 'PromptNode',            label: 'Prompt Step',           icon: Bot,            color: 'purple',  category: 'LLMs & Generation',    categoryOrder: 6, description: 'Custom LLM prompt for decisions', tags: ['llm','prompt','decision','routing','custom','instruction','step','bot'] },
 
   // ── Query Transformation ───────────────────────────────────────────────
   { type: 'HyDE',                  label: 'HyDE',                  icon: Lightbulb,      color: 'violet',  category: 'Query Transformation', categoryOrder: 7, description: 'Hypothetical Document Embeddings', tags: ['query','hyde','hypothetical','transform','expand'] },
@@ -50,6 +52,7 @@ export const NODE_REGISTRY = [
   { type: 'AnswerGrader',          label: 'Answer Grader',         icon: CheckCircle2,   color: 'rose',    category: 'Agentic / Self-RAG',   categoryOrder: 8, description: 'Grade answer quality',         tags: ['grade','answer','quality','agentic','self-rag'] },
   { type: 'HallucinationChecker',  label: 'Hallucination Check',   icon: AlertTriangle,  color: 'rose',    category: 'Agentic / Self-RAG',   categoryOrder: 8, description: 'Detect LLM hallucinations',    tags: ['hallucination','detect','grade','agentic','self-rag'] },
   { type: 'QueryRouter',           label: 'Query Router',          icon: GitFork,        color: 'rose',    category: 'Agentic / Self-RAG',   categoryOrder: 8, description: 'Route query to best path',     tags: ['router','route','agentic','branch','conditional'] },
+  { type: 'LLMRouter',             label: 'LLM Router',            icon: Waypoints,      color: 'rose',    category: 'Agentic / Self-RAG',   categoryOrder: 8, description: 'LLM-powered multi-path router',  tags: ['router','route','llm','agentic','branch','collection','decision'] },
 
   // ── Advanced Retrieval ────────────────────────────────────────────────
   { type: 'ParentDocRetriever',    label: 'Parent Doc Retriever',  icon: FolderSearch,   color: 'teal',    category: 'Advanced Retrieval',   categoryOrder: 9, description: 'Retrieve parent + child docs', tags: ['retrieve','parent','child','advanced','hierarchical'] },

@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { NODE_REGISTRY_MAP } from '../constants/nodeRegistry';
-import { X, Settings, Plus, Minus } from 'lucide-react';
+import { getProject } from '../utils/persistence';
+import { X, Settings, Plus, Minus, Zap, RotateCcw } from 'lucide-react';
 
 // Shared field components
 const Field = ({ label, children }) => (
@@ -13,15 +14,77 @@ const Field = ({ label, children }) => (
 
 const inputCls = "w-full text-sm border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all";
 const selectCls = `${inputCls} bg-white cursor-pointer`;
-const llmModelOptions = (
-  <>
-    <option value="gpt-4o">GPT-4o</option>
-    <option value="gpt-4o-mini">GPT-4o Mini</option>
-    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-    <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
-    <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-  </>
-);
+
+// All chat/generation models — shown in the per-node override dropdown
+const ALL_CHAT_MODELS = [
+  { group: 'OpenAI',    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] },
+  { group: 'Google',    models: ['gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'] },
+  { group: 'Anthropic', models: ['claude-opus-4-6', 'claude-sonnet-4-6', 'claude-haiku-4-5'] },
+  { group: 'Cohere',    models: ['command-r-plus', 'command-r', 'command'] },
+  { group: 'Mistral',   models: ['mistral-large-latest', 'mistral-medium', 'mistral-small'] },
+  { group: 'Ollama',    models: ['llama3', 'mistral', 'phi3', 'gemma2'] },
+];
+
+const PROVIDER_LABELS = {
+  openai: 'OpenAI', google: 'Google', anthropic: 'Anthropic',
+  cohere: 'Cohere', mistral: 'Mistral', ollama: 'Ollama (local)',
+};
+
+// LLMModelField — shows project default or per-node override
+function LLMModelField({ config, set }) {
+  const { currentProjectId } = useStore();
+  const projectLLM = currentProjectId ? getProject(currentProjectId)?.llmConfig : null;
+  const useDefault = projectLLM && (config.useProjectLLM !== false);
+
+  if (useDefault && projectLLM) {
+    return (
+      <Field label="Model">
+        <div className="flex items-center justify-between bg-indigo-50 border border-indigo-200 rounded-lg px-3 py-2">
+          <div className="flex items-center space-x-2">
+            <Zap size={12} className="text-indigo-500 flex-shrink-0" />
+            <div>
+              <p className="text-xs font-semibold text-indigo-700 leading-none">{projectLLM.chatModel}</p>
+              <p className="text-[10px] text-indigo-400 mt-0.5">
+                {PROVIDER_LABELS[projectLLM.chatProvider] ?? projectLLM.chatProvider} · Project default
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => set('useProjectLLM', false)}
+            className="text-[10px] text-indigo-500 hover:text-indigo-700 font-medium underline flex-shrink-0 ml-2"
+          >
+            Override
+          </button>
+        </div>
+      </Field>
+    );
+  }
+
+  return (
+    <Field label="Model">
+      {projectLLM && (
+        <button
+          onClick={() => set('useProjectLLM', true)}
+          className="flex items-center space-x-1 text-[10px] text-indigo-500 hover:text-indigo-700 mb-1.5 font-medium"
+        >
+          <RotateCcw size={10} />
+          <span>Restore project default ({projectLLM.chatModel})</span>
+        </button>
+      )}
+      <select
+        value={config.model || 'gpt-4o'}
+        onChange={(e) => set('model', e.target.value)}
+        className={selectCls}
+      >
+        {ALL_CHAT_MODELS.map(({ group, models }) => (
+          <optgroup key={group} label={group}>
+            {models.map((m) => <option key={m} value={m}>{m}</option>)}
+          </optgroup>
+        ))}
+      </select>
+    </Field>
+  );
+}
 
 const SettingsPanel = () => {
   const { selectedNodeId, setSelectedNodeId, updateNodeData, nodes } = useStore();
@@ -183,12 +246,7 @@ const SettingsPanel = () => {
                 ))}
               </div>
             </Field>
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o-mini'} onChange={(e) => set('model', e.target.value)} className={selectCls}>
-                <option value="gpt-4o-mini">GPT-4o Mini</option>
-                <option value="gpt-4o">GPT-4o</option>
-              </select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="Max Summary Length">
               <input type="number" value={config.maxSummaryLen || 200} onChange={(e) => set('maxSummaryLen', parseInt(e.target.value))} className={inputCls} />
             </Field>
@@ -289,9 +347,7 @@ const SettingsPanel = () => {
       case 'Summarizer':
         return (
           <div className="space-y-4">
-            <Field label="Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="Temperature">
               <input type="range" min="0" max="1" step="0.05" value={config.temperature || 0.7} onChange={(e) => set('temperature', parseFloat(e.target.value))} className="w-full" />
               <div className="text-xs text-gray-400 text-right">{config.temperature || 0.7}</div>
@@ -314,9 +370,7 @@ const SettingsPanel = () => {
                 <option value="csv">CSV</option>
               </select>
             </Field>
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="JSON Schema">
               <textarea value={config.schema || ''} onChange={(e) => set('schema', e.target.value)} rows={5} placeholder={'{\n  "name": "string",\n  "score": "number"\n}'} className={`${inputCls} font-mono text-xs`} />
             </Field>
@@ -333,9 +387,7 @@ const SettingsPanel = () => {
       case 'HyDE':
         return (
           <div className="space-y-4">
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="Hypothetical Docs to Generate">
               <input type="number" min={1} max={5} value={config.numDocs || 3} onChange={(e) => set('numDocs', parseInt(e.target.value))} className={inputCls} />
             </Field>
@@ -349,9 +401,7 @@ const SettingsPanel = () => {
       case 'MultiQueryExpander':
         return (
           <div className="space-y-4">
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="Number of Queries (2–6)">
               <input type="number" min={2} max={6} value={config.numQueries || 3} onChange={(e) => set('numQueries', parseInt(e.target.value))} className={inputCls} />
             </Field>
@@ -367,9 +417,7 @@ const SettingsPanel = () => {
       case 'StepBackPrompt':
         return (
           <div className="space-y-4">
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="Abstraction Steps">
               <input type="number" min={1} max={3} value={config.steps || 1} onChange={(e) => set('steps', parseInt(e.target.value))} className={inputCls} />
             </Field>
@@ -387,9 +435,7 @@ const SettingsPanel = () => {
                 <option value="decompose">Decompose to sub-queries</option>
               </select>
             </Field>
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
           </div>
         );
 
@@ -397,9 +443,7 @@ const SettingsPanel = () => {
       case 'DocumentGrader':
         return (
           <div className="space-y-4">
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="Pass Threshold">
               <select value={config.threshold || 'balanced'} onChange={(e) => set('threshold', e.target.value)} className={selectCls}>
                 <option value="strict">Strict (high relevance only)</option>
@@ -416,9 +460,7 @@ const SettingsPanel = () => {
       case 'AnswerGrader':
         return (
           <div className="space-y-4">
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="Scoring Rubric">
               <textarea value={config.rubric || ''} onChange={(e) => set('rubric', e.target.value)} rows={4} placeholder="Evaluate the answer on relevance, accuracy, and completeness…" className={inputCls} />
             </Field>
@@ -428,9 +470,7 @@ const SettingsPanel = () => {
       case 'HallucinationChecker':
         return (
           <div className="space-y-4">
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="Detection Mode">
               <select value={config.mode || 'binary'} onChange={(e) => set('mode', e.target.value)} className={selectCls}>
                 <option value="binary">Binary (yes/no)</option>
@@ -485,9 +525,7 @@ const SettingsPanel = () => {
       case 'ContextualCompressor':
         return (
           <div className="space-y-4">
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="Max Tokens per Chunk">
               <input type="number" value={config.maxTokens || 400} onChange={(e) => set('maxTokens', parseInt(e.target.value))} className={inputCls} />
             </Field>
@@ -557,9 +595,7 @@ const SettingsPanel = () => {
       case 'StreamingResponse':
         return (
           <div className="space-y-4">
-            <Field label="LLM Model">
-              <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className={selectCls}>{llmModelOptions}</select>
-            </Field>
+            <LLMModelField config={config} set={set} />
             <Field label="Stream Target">
               <select value={config.target || 'chat_panel'} onChange={(e) => set('target', e.target.value)} className={selectCls}>
                 <option value="chat_panel">Chat Panel</option>
@@ -598,6 +634,65 @@ const SettingsPanel = () => {
             </Field>
           </div>
         );
+
+      // ── Prompt Step ───────────────────────────────────────────────────
+      case 'PromptNode':
+        return (
+          <div className="space-y-4">
+            <LLMModelField config={config} set={set} />
+            <Field label="Prompt Template">
+              <div className="text-[10px] text-gray-400 mb-1.5 leading-snug">
+                Variables: <code className="bg-gray-100 px-1 rounded">{'{{query}}'}</code> and <code className="bg-gray-100 px-1 rounded">{'{{context}}'}</code>
+              </div>
+              <textarea
+                value={config.promptTemplate || ''}
+                onChange={(e) => set('promptTemplate', e.target.value)}
+                rows={5}
+                className={inputCls}
+                placeholder={'Given the query: {{query}}\n\nContext: {{context}}\n\nBased on the above, rewrite the query to search the most relevant collection.'}
+              />
+            </Field>
+            <Field label="Output Type">
+              <select value={config.outputType || 'text'} onChange={(e) => set('outputType', e.target.value)} className={selectCls}>
+                <option value="text">Text (transformed query)</option>
+                <option value="json">JSON (structured)</option>
+                <option value="boolean">Boolean (yes / no)</option>
+              </select>
+            </Field>
+            {config.outputType === 'json' && (
+              <>
+                <Field label="JSON Schema">
+                  <textarea
+                    value={config.jsonSchema || ''}
+                    onChange={(e) => set('jsonSchema', e.target.value)}
+                    rows={5}
+                    placeholder={'{\n  "collection": "string",\n  "confidence": "number",\n  "reason": "string"\n}'}
+                    className={`${inputCls} font-mono text-xs`}
+                  />
+                </Field>
+                <Field label="Strict Mode">
+                  <label className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config.strictJson ?? false}
+                      onChange={(e) => set('strictJson', e.target.checked)}
+                      className="rounded text-indigo-600 h-3.5 w-3.5"
+                    />
+                    <span className="text-xs text-gray-600">Enforce schema strictly</span>
+                  </label>
+                </Field>
+              </>
+            )}
+            <Field label="Temperature">
+              <input type="range" min="0" max="1" step="0.05" value={config.temperature ?? 0.3} onChange={(e) => set('temperature', parseFloat(e.target.value))} className="w-full" />
+              <div className="text-xs text-gray-400 text-right">{config.temperature ?? 0.3}</div>
+            </Field>
+          </div>
+        );
+
+      // ── LLM Router ────────────────────────────────────────────────────
+      case 'LLMRouter':
+        return <LLMRouterConfig config={config} set={set} />;
 
       default:
         return <p className="text-xs text-gray-500 italic">No configuration needed for {node.type}.</p>;
@@ -705,11 +800,7 @@ const KGBuilderConfig = ({ config, set }) => {
   const inputCls2 = "flex-1 text-sm border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400";
   return (
     <div className="space-y-4">
-      <Field label="LLM Model">
-        <select value={config.model || 'gpt-4o'} onChange={(e) => set('model', e.target.value)} className="w-full text-sm border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
-          <option value="gpt-4o">GPT-4o</option><option value="gpt-4o-mini">GPT-4o Mini</option>
-        </select>
-      </Field>
+      <LLMModelField config={config} set={set} />
       <Field label="Entity Types">
         <div className="space-y-1.5">
           {entityTypes.map((t, i) => (
@@ -734,6 +825,56 @@ const KGBuilderConfig = ({ config, set }) => {
       </Field>
       <Field label="Max Entities per Doc">
         <input type="number" value={config.maxEntities || 20} onChange={(e) => set('maxEntities', parseInt(e.target.value))} className="w-full text-sm border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+      </Field>
+    </div>
+  );
+};
+
+const LLMRouterConfig = ({ config, set }) => {
+  const [routes, setRoutes] = useState(config.routes || ['Collection A', 'Collection B']);
+  const updateRoutes = (r) => { setRoutes(r); set('routes', r); };
+  return (
+    <div className="space-y-4">
+      <LLMModelField config={config} set={set} />
+      <Field label="Routing Prompt">
+        <div className="text-[10px] text-gray-400 mb-1.5 leading-snug">
+          Variable: <code className="bg-gray-100 px-1 rounded">{'{{query}}'}</code> · LLM must return one of the route labels below
+        </div>
+        <textarea
+          value={config.routingPrompt || ''}
+          onChange={(e) => set('routingPrompt', e.target.value)}
+          rows={4}
+          className="w-full text-sm border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-all"
+          placeholder={'Given the query: {{query}}\n\nWhich collection is most relevant? Reply with exactly one of the route labels.'}
+        />
+      </Field>
+      <Field label="Route Labels">
+        <div className="space-y-2">
+          {routes.map((r, i) => (
+            <div key={i} className="flex space-x-1.5">
+              <input
+                value={r}
+                onChange={(e) => { const n = [...routes]; n[i] = e.target.value; updateRoutes(n); }}
+                className="flex-1 text-sm border border-gray-200 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                placeholder={`Route ${i + 1} label…`}
+              />
+              {routes.length > 2 && (
+                <button onClick={() => updateRoutes(routes.filter((_, j) => j !== i))} className="p-2 text-red-400 hover:bg-red-50 rounded-lg transition-colors">
+                  <Minus size={13} />
+                </button>
+              )}
+            </div>
+          ))}
+          {routes.length < 4 && (
+            <button onClick={() => updateRoutes([...routes, `Collection ${routes.length + 1}`])} className="flex items-center space-x-1 text-xs text-indigo-500 hover:text-indigo-700 transition-colors">
+              <Plus size={13} /><span>Add route</span>
+            </button>
+          )}
+        </div>
+      </Field>
+      <Field label="Temperature">
+        <input type="range" min="0" max="1" step="0.05" value={config.temperature ?? 0.0} onChange={(e) => set('temperature', parseFloat(e.target.value))} className="w-full" />
+        <div className="text-xs text-gray-400 text-right">{config.temperature ?? 0.0}</div>
       </Field>
     </div>
   );

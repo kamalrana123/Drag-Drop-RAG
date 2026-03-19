@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { addEdge, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 import { PORT_COMPATIBILITY, PORT_TYPES } from './constants/portTypes';
-import { autoSave, loadAutosave } from './utils/persistence';
+import { autoSave, loadAutosave, saveProjectPipeline } from './utils/persistence';
 import { serializePipeline, deserializePipeline } from './utils/pipelineSerialization';
 
 const MAX_HISTORY = 50;
@@ -81,6 +81,62 @@ const restored = getInitialState();
 
 export const useStore = create(
   subscribeWithSelector((set, get) => ({
+    // ── Auth ──────────────────────────────────────────────────────────────
+    isAuthenticated: false,
+    token: localStorage.getItem('rag_token') ?? null,
+    currentUser: null,
+    currentView: 'dashboard', // 'dashboard' | 'canvas' | 'project'
+    login: () => set({ isAuthenticated: true }),
+    logout: () => {
+      localStorage.removeItem('rag_token');
+      set({ isAuthenticated: false, token: null, currentUser: null, currentView: 'dashboard' });
+    },
+    setToken: (token) => {
+      if (token) localStorage.setItem('rag_token', token);
+      else localStorage.removeItem('rag_token');
+      set({ token });
+    },
+    setCurrentUser: (user) => set({ currentUser: user }),
+    setView: (view) => set({ currentView: view }),
+
+    // ── Project ───────────────────────────────────────────────────────────
+    currentProjectId: null,
+    activeProjectTab: 'overview', // 'overview' | 'pipeline' | 'documents' | 'settings'
+
+    openProject: (project) => {
+      let nodes = [];
+      let edges = [];
+      if (project.pipeline) {
+        try {
+          const result = deserializePipeline(project.pipeline);
+          nodes = result.nodes;
+          edges = result.edges;
+        } catch { /* corrupt pipeline — open blank */ }
+      }
+      set({
+        currentProjectId: project.id,
+        currentView: 'project',
+        activeProjectTab: 'overview',
+        nodes,
+        edges,
+        history: [],
+        future: [],
+        selectedNodeId: null,
+        nodeExecutionStatus: {},
+        nodeExecutionData: {},
+        isExecuting: false,
+        chatHistory: [],
+      });
+    },
+
+    setActiveProjectTab: (tab) => set({ activeProjectTab: tab }),
+
+    closeProject: () => set({
+      currentProjectId: null,
+      currentView: 'dashboard',
+      activeProjectTab: 'overview',
+    }),
+
     // ── Core graph state ──────────────────────────────────────────────────
     nodes: restored?.nodes ?? initialNodes,
     edges: restored?.edges ?? initialEdges,
@@ -248,10 +304,14 @@ export const useStore = create(
   }))
 );
 
-// Autosave subscription — fires whenever nodes or edges change
+// Autosave subscription — fires whenever nodes, edges, or active project changes
 useStore.subscribe(
-  (state) => ({ nodes: state.nodes, edges: state.edges }),
-  ({ nodes, edges }) => {
-    autoSave(serializePipeline(nodes, edges));
+  (state) => ({ nodes: state.nodes, edges: state.edges, currentProjectId: state.currentProjectId }),
+  ({ nodes, edges, currentProjectId }) => {
+    const pipeline = serializePipeline(nodes, edges);
+    autoSave(pipeline);
+    if (currentProjectId) {
+      saveProjectPipeline(currentProjectId, pipeline);
+    }
   }
 );

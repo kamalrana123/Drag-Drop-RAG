@@ -15,11 +15,11 @@ import {
   Lightbulb, GitBranch, ArrowUpLeft, PenLine, ClipboardCheck, CheckCircle2,
   AlertTriangle, GitFork, FolderSearch, AlignLeft, Layers, Minimize2,
   Share2, Network, Brain, History, Radio, BookMarked,
-  RotateCcw, RotateCw, MessageCircle, Trash2
+  RotateCcw, RotateCw, MessageCircle, Trash2, Bot, Waypoints
 } from 'lucide-react';
 import { useStore } from '../store';
 import BaseNode from './BaseNode';
-import axios from 'axios';
+import api from '../utils/api';
 import { ConfirmModal, ResultModal } from './modals';
 import { useModal } from '../hooks/useModal';
 import Toast from './ui/Toast';
@@ -65,6 +65,8 @@ const ConversationMemoryNode = (p) => <BaseNode {...p} icon={Brain}          col
 const ChatHistoryNode        = (p) => <BaseNode {...p} icon={History}        color="sky"     description="Inject chat context" />;
 const StreamingResponseNode  = (p) => <BaseNode {...p} icon={Radio}          color="indigo"  description="Stream tokens to UI" />;
 const CitationGeneratorNode  = (p) => <BaseNode {...p} icon={BookMarked}     color="indigo"  description="Generate inline citations" />;
+const PromptNodeNode         = (p) => <BaseNode {...p} icon={Bot}            color="purple"  description="Custom LLM prompt step" />;
+const LLMRouterNode          = (p) => <BaseNode {...p} icon={Waypoints}      color="rose"    description="LLM-powered query router" />;
 
 const nodeTypes = {
   FileSource: FileSourceNode, WebSource: WebSourceNode, S3Source: S3SourceNode,
@@ -85,6 +87,7 @@ const nodeTypes = {
   KnowledgeGraphBuilder: KnowledgeGraphBuilderNode, GraphRetriever: GraphRetrieverNode,
   ConversationMemory: ConversationMemoryNode, ChatHistory: ChatHistoryNode,
   StreamingResponse: StreamingResponseNode, CitationGenerator: CitationGeneratorNode,
+  PromptNode: PromptNodeNode, LLMRouter: LLMRouterNode,
 };
 
 // ── Inner Flow (needs useReactFlow inside ReactFlowProvider) ─────────────────
@@ -98,6 +101,7 @@ const FlowInner = () => {
     undo, redo, history, future,
     connectionError, clearConnectionError,
     setChatPanelOpen,
+    currentProjectId,
   } = useStore();
 
   const { screenToFlowPosition } = useReactFlow();
@@ -168,24 +172,37 @@ const FlowInner = () => {
   }, [confirmModal, setNodes, setEdges, setSelectedNodeId]);
 
   const onRunIngestion = useCallback(async () => {
+    if (!currentProjectId) {
+      showToast('No project selected. Open a project first.', 'error');
+      return;
+    }
     setIsRunningIngestion(true);
     try {
-      const response = await axios.post('http://localhost:8000/run-ingestion', { nodes, edges });
-      resultModal.open({
-        title: 'Ingestion Complete',
-        content: response.data,
-        variant: 'success',
-      });
+      const { job_id } = await api.execution.runIngestion(currentProjectId, { nodes, edges });
+
+      // Poll job status every 2 s
+      const poll = setInterval(async () => {
+        try {
+          const job = await api.execution.getJob(currentProjectId, job_id);
+          if (job.status === 'done') {
+            clearInterval(poll);
+            setIsRunningIngestion(false);
+            resultModal.open({ title: 'Ingestion Complete', content: job.result, variant: 'success' });
+          } else if (job.status === 'error') {
+            clearInterval(poll);
+            setIsRunningIngestion(false);
+            resultModal.open({ title: 'Ingestion Failed', content: job.error_msg, variant: 'error' });
+          }
+        } catch {
+          clearInterval(poll);
+          setIsRunningIngestion(false);
+        }
+      }, 2000);
     } catch (error) {
-      resultModal.open({
-        title: 'Ingestion Failed',
-        content: error.response?.data?.detail || error.message,
-        variant: 'error',
-      });
-    } finally {
       setIsRunningIngestion(false);
+      resultModal.open({ title: 'Ingestion Failed', content: error.message, variant: 'error' });
     }
-  }, [nodes, edges, resultModal]);
+  }, [nodes, edges, resultModal, currentProjectId]);
 
   // handleQuerySubmit is called from ChatPanel via the store's nodes/edges
   // We expose it on the store so ChatPanel can trigger it without prop drilling
@@ -193,17 +210,17 @@ const FlowInner = () => {
     useStore.setState({ _runQuery: async (query) => {
       setIsRunningQuery(true);
       try {
-        const { nodes: n, edges: e } = useStore.getState();
-        const response = await axios.post('http://localhost:8000/run-query', { nodes: n, edges: e, query });
+        const { nodes: n, edges: e, currentProjectId: pid } = useStore.getState();
+        const result = await api.execution.runQuery(pid, query, n, e);
         useStore.getState().addChatMessage({
           id: Date.now(),
           role: 'assistant',
-          content: response.data.answer ?? JSON.stringify(response.data),
-          sources: response.data.sources ?? [],
+          content: result.answer ?? JSON.stringify(result),
+          sources: result.sources ?? [],
           timestamp: new Date().toISOString(),
         });
       } catch (error) {
-        showToast('Query failed: ' + (error.response?.data?.detail || error.message), 'error');
+        showToast('Query failed: ' + error.message, 'error');
       } finally {
         setIsRunningQuery(false);
       }
